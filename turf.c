@@ -47,7 +47,6 @@ static void destroywin(GtkWidget *w, Client *c);
 static void die(const char *errstr, ...);
 static void loaduri(Client *c, Arg *arg);
 static Client * newclient(void);
-static void setup(void);
 static void sigchld(int unused);
 static void usage(void);
 
@@ -156,21 +155,6 @@ newclient(void) {
 }
 
 void
-setup(void) {
-	sigchld(0);
-
-	gtk_init(NULL, NULL);
-	gtk_gl_init(NULL, NULL);
-
-	dpy = GDK_DISPLAY();
-
-	/* atoms */
-	atoms[AtomFind] = XInternAtom(dpy, "_TURF_FIND", False);
-	atoms[AtomGo] = XInternAtom(dpy, "_TURF_GO", False);
-	atoms[AtomUri] = XInternAtom(dpy, "_TURF_URI", False);
-}
-
-void
 sigchld(int unused) {
 	if(signal(SIGCHLD, sigchld) == SIG_ERR)
 		die("Can't install SIGCHLD handler");
@@ -205,7 +189,17 @@ main(int argc, char *argv[]) {
 	if(argc > 0)
 		arg.v = argv[0];
 
-	setup();
+	sigchld(0);
+
+	gtk_init(NULL, NULL);
+	gtk_gl_init(NULL, NULL);
+
+	dpy = GDK_DISPLAY();
+
+	/* atoms */
+	atoms[AtomFind] = XInternAtom(dpy, "_TURF_FIND", False);
+	atoms[AtomGo] = XInternAtom(dpy, "_TURF_GO", False);
+	atoms[AtomUri] = XInternAtom(dpy, "_TURF_URI", False);
 	newclient();
 	if(arg.v)
 		loaduri(clients, &arg);
