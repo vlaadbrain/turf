@@ -46,7 +46,6 @@ static void destroyclient(Client *c);
 static void destroywin(GtkWidget *w, Client *c);
 static void die(const char *errstr, ...);
 static void loaduri(Client *c, Arg *arg);
-static Client * newclient(void);
 static void sigchld(int unused);
 static void usage(void);
 
@@ -92,10 +91,54 @@ void
 loaduri(Client *c, Arg *arg) {
 }
 
-Client *
-newclient(void) {
+void
+sigchld(int unused) {
+	if(signal(SIGCHLD, sigchld) == SIG_ERR)
+		die("Can't install SIGCHLD handler");
+	while(0 < waitpid(-1, NULL, WNOHANG));
+}
+
+void
+usage(void) {
+	die("usage: %s [-vx] [-e xid] [uri]\n", basename(argv0));
+}
+
+int
+main(int argc, char *argv[]) {
+	Arg arg;
 	Client *c;
 	GdkGeometry hints = { 1, 1 };
+
+	memset(&arg, 0, sizeof(arg));
+
+	/* command line args */
+	ARGBEGIN {
+	case 'e':
+		embed = strtol(EARGF(usage()), NULL, 0);
+		break;
+	case 'v':
+		die("turf-"VERSION", ©2014 turf engineers, "
+				"see LICENSE for details\n");
+	case 'x':
+		showxid = TRUE;
+		break;
+	default:
+		usage();
+	} ARGEND;
+	if(argc > 0)
+		arg.v = argv[0];
+
+	sigchld(0);
+
+	gtk_init(NULL, NULL);
+	gtk_gl_init(NULL, NULL);
+
+	dpy = GDK_DISPLAY();
+
+	/* atoms */
+	atoms[AtomFind] = XInternAtom(dpy, "_TURF_FIND", False);
+	atoms[AtomGo] = XInternAtom(dpy, "_TURF_GO", False);
+	atoms[AtomUri] = XInternAtom(dpy, "_TURF_URI", False);
 
 	if(!(c = calloc(1, sizeof(Client))))
 		die("Cannot malloc!\n");
@@ -151,56 +194,6 @@ newclient(void) {
 		}
 	}
 
-	return c;
-}
-
-void
-sigchld(int unused) {
-	if(signal(SIGCHLD, sigchld) == SIG_ERR)
-		die("Can't install SIGCHLD handler");
-	while(0 < waitpid(-1, NULL, WNOHANG));
-}
-
-void
-usage(void) {
-	die("usage: %s [-vx] [-e xid] [uri]\n", basename(argv0));
-}
-
-int
-main(int argc, char *argv[]) {
-	Arg arg;
-
-	memset(&arg, 0, sizeof(arg));
-
-	/* command line args */
-	ARGBEGIN {
-	case 'e':
-		embed = strtol(EARGF(usage()), NULL, 0);
-		break;
-	case 'v':
-		die("turf-"VERSION", ©2014 turf engineers, "
-				"see LICENSE for details\n");
-	case 'x':
-		showxid = TRUE;
-		break;
-	default:
-		usage();
-	} ARGEND;
-	if(argc > 0)
-		arg.v = argv[0];
-
-	sigchld(0);
-
-	gtk_init(NULL, NULL);
-	gtk_gl_init(NULL, NULL);
-
-	dpy = GDK_DISPLAY();
-
-	/* atoms */
-	atoms[AtomFind] = XInternAtom(dpy, "_TURF_FIND", False);
-	atoms[AtomGo] = XInternAtom(dpy, "_TURF_GO", False);
-	atoms[AtomUri] = XInternAtom(dpy, "_TURF_URI", False);
-	newclient();
 	if(arg.v)
 		loaduri(clients, &arg);
 
